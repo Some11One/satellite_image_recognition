@@ -30,4 +30,5 @@ As of yet project is not fully complete, but you can use modules separetly.
   * unet.ipynb - train / test u-net (can run on multiple gpus);
   * combine_sentinel_and_osm.ipynb - helpful script to load osm polygons by lat, lon bounds.
 
-
+# Presentation (for neurohive 2018)
+https://youtu.be/VeeZUqF1Ils
