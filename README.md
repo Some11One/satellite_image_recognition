@@ -23,11 +23,11 @@ As of yet project is not fully complete, but you can use modules separetly.
 
 1. Pre-trained u-net models are available at /satellite_image_recognition/models/*.hdf5. Input - 512 * 512 images in grey-scale format.
 2. Web-application:
-  2.1 Upload module (available at localhost:8000/upload/) - lets you upload satellite images and choose what objects to find on them;
-  2.2 Map module - leaflet map with sentinel data (moscow only) and predicted roads polygons for that region.
+  * Upload module (available at localhost:8000/upload/) - lets you upload satellite images and choose what objects to find on them;
+  * Map module - leaflet map with sentinel data (moscow only) and predicted roads polygons for that region.
 3. Various helpful script:
-  3.1 data.ipynb - prepare data for u-net;
-  3.2 unet.ipynb - train / test u-net (can run on multiple gpus);
-  3.3 combine_sentinel_and_osm.ipynb - helpful script to load osm polygons by lat, lon bounds.
+  * data.ipynb - prepare data for u-net;
+  * unet.ipynb - train / test u-net (can run on multiple gpus);
+  * combine_sentinel_and_osm.ipynb - helpful script to load osm polygons by lat, lon bounds.
 
 
