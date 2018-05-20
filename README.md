@@ -7,7 +7,7 @@ Project aim is to provide free web-application for geo-reseachers to find and ex
 Project consists of several modules
 
 * Django web-application, which will be used to provide easy access to CNNs functionality, as well as interactive leaflet map;
-* U-net CNNs, trained to find roads, houses and cars (using Keras + Tensorflow);
+* U-net (https://lmb.informatik.uni-freiburg.de/people/ronneber/u-net/) CNNs, trained to find roads, houses and cars (using Keras + Tensorflow);
 * Leaflet map + sentinel (https://scihub.copernicus.eu/) tile layer: sentinel will be used as input for CNNs;
 * OpenStreetMap module to load polygons: they will be used as a teacher for CNNs.
 
