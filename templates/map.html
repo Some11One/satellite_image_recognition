@@ -1,0 +1,81 @@
+{% load leaflet_tags %}
+{% load static %}
+<html>
+<head>
+    <title>Карта</title>
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+    <link rel="icon" type="image/png" href={% static 'favicon-16x16.png' %} sizes="16x16"/>
+
+    {% leaflet_js %}
+    {% leaflet_css %}
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+        }
+
+        html, body, #map {
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+
+<script
+        src="http://cdn.leafletjs.com/leaflet-0.7/leaflet.js">
+</script>
+
+<script type="text/javascript">
+
+    function onClick(e) {
+        var vals = e.latlng;
+        window.location = '{% url 'map' %}?latlng=' + vals
+    }
+
+    var map = L.map('map').setView([{{ base_lat }}, {{ base_lon }}], 14);
+    map.on('click', onClick);
+    mapLink =
+        '<a href="http://openstreetmap.org">OpenStreetMap</a>';
+    L.tileLayer(
+        'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; ' + mapLink + ' Contributors',
+            maxZoom: 14
+        }).addTo(map);
+
+    // moscow tile 37_UDB_2018_05_12
+    var southWest = L.latLng(54.9590034, 37.398563),
+    northEast = L.latLng(55.935327, 39.1524197),
+    bounds = L.latLngBounds(southWest, northEast);
+    L.tileLayer("../media/combined_37_UDB/{z}/{x}/{y}.png", {
+            minZoom: 8,
+            maxZoom: 14,
+            attribution: 'ESO/INAF-VST/OmegaCAM',
+            tms: true,
+            bounds:bounds,
+            opacity:1,
+            interactive:false
+        }).addTo(map);
+    L.tileLayer("../media/combined_37_UDB/{z}/{x}/{y}_mask_highway.png", {
+            minZoom: 14,
+            maxZoom: 14,
+            attribution: 'ESO/INAF-VST/OmegaCAM',
+            tms: true,
+            bounds:bounds,
+            opacity:0.3,
+            interactive:false
+        }).addTo(map);
+    L.geoJson({{ boundary | safe}}).addTo(map);
+    L.geoJson({{ geometry | safe}}).addTo(map);
+
+</script>
+
+<div style="position: absolute; margin-top: -2.5em;">
+{#    <button class="btn btn-primary" onclick="window.location='{% url 'map' %}?export=true'"#}
+{#            title="Скачать результат">Выгрузить результат .wkt#}
+{#    </button>#}
+</div>
+</body>
+</html>

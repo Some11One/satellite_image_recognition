@@ -1,0 +1,46 @@
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <title>Загрузка</title>
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+    <link rel="icon" type="image/png" href={% static 'favicon-16x16.png' %} sizes="16x16" />
+</head>
+<fieldset style="margin: 2.5em">
+        <legend>Выберите спутниковое изображение</legend>
+</fieldset>
+<form action="{% url 'upload' %} " method="POST" enctype="multipart/form-data" class="form-horizontal">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="name" ></label>
+        <div class="col-md-8" >
+            <p style="margin-left: 2.5em"><input type="file" name="photo_file" id="photo_file" required="True" class="form-control" ></p>
+        </div>
+    </div>
+
+    <fieldset style="margin: 2.5em">
+        <legend>Выберите объекты для поиска</legend>
+        <div>
+            <input type="checkbox" id="buildings" name="objects" value="buildings" checked>
+            <label for="coding">Дома</label>
+        </div>
+        <div>
+            <input type="checkbox" id="cars" name="objects" value="cars" checked>
+            <label for="music">Машины</label>
+        </div>
+    </fieldset>
+
+    <div class="form-group">
+        <div style="margin-bottom:10px;">
+            <p style="margin-left: 3.5em"><button class="btn btn-primary"><span class="glyphicon glyphicon-upload" ></span> Загрузить
+            </button></p>
+        </div>
+    </div>
+</form>
+{% if messages %}
+<ul class="messages" style="color: darkred">
+    {% for message in messages %}
+    <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+    {% endfor %}
+</ul>
+{% endif %}

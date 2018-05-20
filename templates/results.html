@@ -1,0 +1,69 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Результат</title>
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+    <link rel="icon" type="image/png" href={% static 'favicon-16x16.png' %} sizes="16x16"/>
+</head>
+<body>
+
+<fieldset style="margin: 2.5em">
+    <legend>Результаты</legend>
+</fieldset>
+
+<table style="margin-top: 2.5em" width=100% height=100%>
+    <tr>
+        <td width=50%>
+            <p style="text-align:center;"><img src="../media/temp_image.png" width="400"
+                                               height="400"/></p>
+            <p style="text-align: center;"><span style="font-size: large;"><u><b>Исходное изображение</b></u></span></p>
+        </td>
+        <td width=50%>
+            <p style="text-align:center;"><img src="../media/temp_image_pred.png" width="400"
+                                               height="400"/></p>
+            <p style="text-align: center;"><span style="font-size: large;"><u><b>Найденные объекты</b></u></span></p>
+        </td>
+    </tr>
+</table>
+
+<fieldset style="margin: 2.5em">
+    <legend>Статистика</legend>
+    <div>
+        <b>На изображении было найдено:</b>
+        <ul>
+            <li>
+                Машин: - шт.
+            </li>
+            <li>
+                Домов: - шт.
+            </li>
+        </ul>
+        <br>
+        <b>Время работы нейронных сетей:</b>
+        <ul>
+            <li>
+                Секунд: -
+            </li>
+        </ul>
+    </div>
+</fieldset>
+
+<fieldset style="margin: 2.5em">
+    <legend>Скачать</legend>
+    <div>
+        <button class="btn btn-primary" onclick="window.location='{% url 'results' %}?export=true'"
+                title="Скачать результат">Выгрузить результат .png
+        </button>
+        <button class="btn btn-primary" onclick="window.location='{% url 'results' %}?export=true'"
+                title="Скачать результат">Выгрузить результат .tif
+        </button>
+        <button class="btn btn-primary" onclick="window.location='{% url 'results' %}?export=true'"
+                title="Скачать результат">Выгрузить результат .wkt
+        </button>
+    </div>
+</fieldset>
+</body>
+</html>
