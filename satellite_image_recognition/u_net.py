@@ -201,9 +201,9 @@ class myUnet(object):
 
         model = self.get_unet()
         if self.type == 'buildings':
-            model.load_weights(os.path.join(BASE_DIR, 'model_weights/unet_b.hdf5'))
+            model.load_weights(os.path.join(BASE_DIR, 'satellite_image_recognition/model_weights/unet_b.hdf5'))
         else:
-            model.load_weights(os.path.join(BASE_DIR, 'model_weights/unet_c.hdf5'))
+            model.load_weights(os.path.join(BASE_DIR, 'satellite_image_recognition/model_weights/unet_c.hdf5'))
         model.compile(optimizer=Nadam(lr=1e-3), loss=jaccard_coef_loss,
                       metrics=['binary_crossentropy', jaccard_coef_int])
 

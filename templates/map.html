@@ -45,7 +45,7 @@
             maxZoom: 14
         }).addTo(map);
 
-    // moscow tile 37_UDB_2018_05_12
+    // moscow tile \37\UDB_2018_05_12
     var southWest = L.latLng(54.9590034, 37.398563),
     northEast = L.latLng(55.935327, 39.1524197),
     bounds = L.latLngBounds(southWest, northEast);
@@ -58,7 +58,7 @@
             opacity:1,
             interactive:false
         }).addTo(map);
-    L.tileLayer("../media/combined_37_UDB/{z}/{x}/{y}_mask_highway.png", {
+    L.tileLayer("../media/combined_37_UDB/{z}/{x}/{y}_pred_highway.png", {
             minZoom: 14,
             maxZoom: 14,
             attribution: 'ESO/INAF-VST/OmegaCAM',
@@ -67,6 +67,69 @@
             opacity:0.3,
             interactive:false
         }).addTo(map);
+    L.tileLayer("../media/combined_37_UDB/{z}/{x}/{y}_pred_waterway.png", {
+            minZoom: 14,
+            maxZoom: 14,
+            attribution: 'ESO/INAF-VST/OmegaCAM',
+            tms: true,
+            bounds:bounds,
+            opacity:0.3,
+            interactive:false
+        }).addTo(map);
+    L.tileLayer("../media/combined_37_UDB/{z}/{x}/{y}_pred_building.png", {
+            minZoom: 14,
+            maxZoom: 14,
+            attribution: 'ESO/INAF-VST/OmegaCAM',
+            tms: true,
+            bounds:bounds,
+            opacity:0.3,
+            interactive:false
+        }).addTo(map);
+
+    {#// moscow tile \37\UCB_2018_05_10#}
+    {#var southWest = L.latLng(54.9190267, 35.87922),#}
+    {#northEast = L.latLng(55.9372733, 37.5560221),#}
+    {#bounds = L.latLngBounds(southWest, northEast);#}
+    {#L.tileLayer("../media/combined_37_UCB/{z}/{x}/{y}.png", {#}
+    {#        minZoom: 8,#}
+    {#        maxZoom: 14,#}
+    {#        attribution: 'ESO/INAF-VST/OmegaCAM',#}
+    {#        tms: true,#}
+    {#        bounds:bounds,#}
+    {#        opacity:0.8,#}
+    {#        interactive:false#}
+    {#    }).addTo(map);#}
+    {##}
+    {##}
+    {#// moscow tile \37\VDC_2018_05_10#}
+    {#var southWest = L.latLng(55.8469481, 37.4021995),#}
+    {#northEast = L.latLng(56.8437093, 39.159994),#}
+    {#bounds = L.latLngBounds(southWest, northEast);#}
+    {#L.tileLayer("../media/combined_37_VDC/{z}/{x}/{y}.png", {#}
+    {#        minZoom: 8,#}
+    {#        maxZoom: 14,#}
+    {#        attribution: 'ESO/INAF-VST/OmegaCAM',#}
+    {#        tms: true,#}
+    {#        bounds:bounds,#}
+    {#        opacity:0.8,#}
+    {#        interactive:false#}
+    {#    }).addTo(map);#}
+    {##}
+    {#// moscow tile \37\VCC_2018_05_10#}
+    {#var southWest = L.latLng(55.8158913, 35.8077653),#}
+    {#northEast = L.latLng(56.8350599, 37.5216425),#}
+    {#bounds = L.latLngBounds(southWest, northEast);#}
+    {#L.tileLayer("../media/combined_37_VCC/{z}/{x}/{y}.png", {#}
+    {#        minZoom: 8,#}
+    {#        maxZoom: 14,#}
+    {#        attribution: 'ESO/INAF-VST/OmegaCAM',#}
+    {#        tms: true,#}
+    {#        bounds:bounds,#}
+    {#        opacity:0.8,#}
+    {#        interactive:false#}
+    {#    }).addTo(map);#}
+
+    //
     L.geoJson({{ boundary | safe}}).addTo(map);
     L.geoJson({{ geometry | safe}}).addTo(map);
 

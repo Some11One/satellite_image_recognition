@@ -1,4 +1,5 @@
 import ast
+import csv
 import io
 import json
 import os
@@ -7,6 +8,7 @@ import geojson
 import geopandas as gpd
 import numpy as np
 from PIL import Image
+import pickle
 from django.contrib import messages
 from django.http import HttpResponse
 from django.shortcuts import render
@@ -18,6 +20,14 @@ from shapely.geometry import shape
 from . import u_net
 from geopandas_osm import osm
 from .settings import BASE_DIR
+
+
+def load_obj(name):
+    with open(name + '.pkl', 'rb') as f:
+        return pickle.load(f)
+
+
+d = load_obj(os.path.join(BASE_DIR, 'data/tile_dict'))
 
 
 def upload(request):
@@ -49,7 +59,7 @@ def upload(request):
             img = Image.open(io.BytesIO(img))
 
             # save data
-            img.save(os.path.join(BASE_DIR, 'media/temp_image.png'))
+            img.save(os.path.join(BASE_DIR, 'satellite_image_recognition/media/temp_image.png'))
             # img_in_memory = io.StringIO()
             # img.savefig(img_in_memory, format="png") #dunno if your library can do that.
             # context['image'] = base64.b64encode(img_in_memory.getvalue())
@@ -182,7 +192,8 @@ def upload(request):
 
         # save results
 
-        array_to_img(merged_res[0]).save(os.path.join(BASE_DIR, 'media/temp_image_pred.png'))
+        array_to_img(merged_res[0]).save(
+            os.path.join(BASE_DIR, 'satellite_image_recognition/media/temp_image_pred.png'))
 
     except Exception as e:
         print(e)
@@ -192,7 +203,7 @@ def upload(request):
 
 def results(request):
     if request.GET.get('export'):
-        image = Image.open(os.path.join(BASE_DIR, 'media/temp_image_pred.png'))
+        image = Image.open(os.path.join(BASE_DIR, 'satellite_image_recognition/media/temp_image_pred.png'))
         format = image.format
         extension = str(format)
         response = HttpResponse(content_type='image/' + extension.lower())
@@ -231,22 +242,73 @@ def map(request):
     collection = FeatureCollection([my_feature])
     col = gpd.GeoDataFrame.from_features(collection['features'])
 
-    df = osm.query_osm('way', col.ix[0].geometry, recurse='down', tags='highway')
-    wkt = [ast.literal_eval(geojson.dumps(shapely.geometry.mapping(x))) for x in df.geometry.values]
-    wkt = [i for i in wkt if i.get('type') != 'Point']
+    try:
+        df = osm.query_osm('way', col.ix[0].geometry, recurse='down', tags='highway')
+        wkt = [ast.literal_eval(geojson.dumps(shapely.geometry.mapping(x))) for x in df.geometry.values]
+        wkt = [i for i in wkt if i.get('type') != 'Point']
 
-    # wkt = []
+        test = [base_lon, base_lat]
+
+        res = ()
+        for item in d.items():
+
+            k = item[0]
+            v = item[1]
+            tile_lat_min, tile_long_min, tile_lat_max, tile_long_max = v
+
+            if tile_lat_min <= test[0] <= tile_lat_max and tile_long_min <= test[1] <= tile_long_max:
+                res = (k, v)
+
+        if len(res) > 0:
+            x, y, z = res[0].split('_')
+
+            image = Image.open(
+                os.path.join(BASE_DIR, 'satellite_image_recognition/media/combined_37_UDB/%s/%s/%s.png' % (z, x, y)))
+            format = image.format
+            extension = str(format)
+            response = HttpResponse(content_type='image/' + extension.lower())
+            response['Content-Disposition'] = 'attachment; filename=%s' % 'prediction.png'
+            image.save(response, format)
+
+            return response
+
+    except Exception:
+        wkt = []
 
     # if request.GET.get('export'):
-    #     response = HttpResponse(content_type='text/csv')
-    #     response['Content-Disposition'] = 'attachment; filename="wkt_result.csv"'
     #
-    #     writer = csv.writer(response)
-    #     writer.writerow(df.columns.values)
-    #     for i, row in df.iterrows():
-    #         writer.writerow(row.values)
+    #     test = [base_lon, base_lat]
+    #
+    #     res = ()
+    #     for item in d.items():
+    #
+    #         k = item[0]
+    #         v = item[1]
+    #         tile_lat_min, tile_long_min, tile_lat_max, tile_long_max = v
+    #
+    #         if tile_lat_min <= test[0] <= tile_lat_max and tile_long_min <= test[1] <= tile_long_max:
+    #             res = (k, v)
+    #
+    #     x, y, z = res[0].split('_')
+    #
+    #     image = Image.open(os.path.join(BASE_DIR, 'satellite_image_recognition/media/combined_37_UDB/%s/%s/%s.png' % (z, x, y)))
+    #     format = image.format
+    #     extension = str(format)
+    #     response = HttpResponse(content_type='image/' + extension.lower())
+    #     response['Content-Disposition'] = 'attachment; filename=%s' % 'prediction.png'
+    #     image.save(response, format)
     #
     #     return response
+
+        # response = HttpResponse(content_type='text/csv')
+        # response['Content-Disposition'] = 'attachment; filename="wkt_result.csv"'
+        #
+        # writer = csv.writer(response)
+        # writer.writerow(df.columns.values)
+        # for i, row in df.iterrows():
+        #     writer.writerow(row.values)
+        #
+        # return response
 
     # print(wkt.ImageId.unique())
     # polygons = wkt.MultipolygonWKT.values
@@ -283,4 +345,4 @@ def map(request):
     # polygons_res = [[]]
 
     return render(request, 'map.html', {'base_lat': base_lon, 'base_lon': base_lat,
-                                                'boundary': o, 'geometry': wkt})
+                                        'boundary': o, 'geometry': wkt})
