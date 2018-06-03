@@ -263,7 +263,7 @@ def results(request):
     data.update({'temp_image_pred': "../media/temp_image_pred_%s.png" % max_image})
 
     if request.GET.get('export'):
-        image = Image.open(os.path.join(BASE_DIR, 'satellite_image_recognition/media/_%s.png' % max_image))
+        image = Image.open(os.path.join(BASE_DIR, 'satellite_image_recognition/media/temp_image_pred_%s.png' % max_image))
         format = image.format
         extension = str(format)
         response = HttpResponse(content_type='image/' + extension.lower())
