@@ -17,12 +17,12 @@
 <table style="margin-top: 2.5em" width=100% height=100%>
     <tr>
         <td width=50%>
-            <p style="text-align:center;"><img src="../media/temp_image.png" width="400"
+            <p style="text-align:center;"><img src={{ temp_image }}  width="400"
                                                height="400"/></p>
             <p style="text-align: center;"><span style="font-size: large;"><u><b>Исходное изображение</b></u></span></p>
         </td>
         <td width=50%>
-            <p style="text-align:center;"><img src="../media/temp_image_pred.png" width="400"
+            <p style="text-align:center;"><img src={{ temp_image_pred }} width="400"
                                                height="400"/></p>
             <p style="text-align: center;"><span style="font-size: large;"><u><b>Найденные объекты</b></u></span></p>
         </td>
@@ -35,19 +35,13 @@
         <b>На изображении было найдено:</b>
         <ul>
             <li>
-                Машин: 242 шт.
+                Машин: {{ cars_count }} шт.
             </li>
             <li>
-                Домов: 57 шт.
+                Домов: {{ houses_count }} шт.
             </li>
         </ul>
         <br>
-        <b>Время работы нейронных сетей:</b>
-        <ul>
-            <li>
-                Секунд: 5.5
-            </li>
-        </ul>
     </div>
 </fieldset>
 
@@ -55,13 +49,7 @@
     <legend>Скачать</legend>
     <div>
         <button class="btn btn-primary" onclick="window.location='{% url 'results' %}?export=true'"
-                title="Скачать результат">Выгрузить результат .png
-        </button>
-        <button class="btn btn-primary" onclick="window.location='{% url 'results' %}?export=true'"
-                title="Скачать результат">Выгрузить результат .tif
-        </button>
-        <button class="btn btn-primary" onclick="window.location='{% url 'results' %}?export=true'"
-                title="Скачать результат">Выгрузить результат .wkt
+                title="Скачать результат">Выгрузить результат PNG
         </button>
     </div>
 </fieldset>

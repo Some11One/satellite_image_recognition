@@ -1,24 +1,23 @@
 import ast
-import csv
 import io
 import json
 import os
+import pickle
 
 import geojson
 import geopandas as gpd
 import numpy as np
 from PIL import Image
-import pickle
 from django.contrib import messages
 from django.http import HttpResponse
 from django.shortcuts import render
 from geojson import Feature, FeatureCollection
+from geopandas_osm import osm
 from keras.preprocessing.image import img_to_array, array_to_img
 from plotly.figure_factory._county_choropleth import shapely
 from shapely.geometry import shape
 
 from . import u_net
-from geopandas_osm import osm
 from .settings import BASE_DIR
 
 
@@ -46,8 +45,19 @@ def upload(request):
         if photo_file.multiple_chunks():
             messages.add_message(request, messages.ERROR, 'Файл слишком большой!')
             return render(request, "upload.html", data)
-
         imgs = [photo_file]
+
+        # create filename
+        files = os.listdir(os.path.join(BASE_DIR, "satellite_image_recognition/media/"))
+        max_image = '0'
+        for file in files:
+            if '.png' in file:
+                max_image_temp = file.split('.')[0].split('_')[-1]
+                if int(max_image_temp) > int(max_image):
+                    max_image = max_image_temp
+        max_image = str(int(max_image) + 1)
+        data.update({'temp_image': "../media/temp_image_%s.png" % max_image})
+        data.update({'temp_image_pred': "../media/temp_image_pred_%s.png" % max_image})
 
         # preprocess file - split into chunks
         imgdatas = np.ndarray((len(imgs) * 9, 512, 512, 1), dtype=np.uint8)
@@ -59,10 +69,7 @@ def upload(request):
             img = Image.open(io.BytesIO(img))
 
             # save data
-            img.save(os.path.join(BASE_DIR, 'satellite_image_recognition/media/temp_image.png'))
-            # img_in_memory = io.StringIO()
-            # img.savefig(img_in_memory, format="png") #dunno if your library can do that.
-            # context['image'] = base64.b64encode(img_in_memory.getvalue())
+            img.save(os.path.join(BASE_DIR, 'satellite_image_recognition/media/temp_image_%s.png' % max_image))
 
             img = img_to_array(img)
 
@@ -103,8 +110,9 @@ def upload(request):
             i += 1
         img_test = imgdatas.astype('float32')
         img_test /= 255
-
         res = np.zeros((9, 512, 512, 3))
+
+        # predict
         for obj in objects:
 
             # u-net obj
@@ -117,7 +125,6 @@ def upload(request):
                 res[:, :, :, 2:3] = i_obj[:, :, :, :1]
             elif obj == 'buildings':
                 res[:, :, :, 1:2] = i_obj[:, :, :, :1]
-
         merged_res = np.zeros((1, 1500, 1500, 3))
         for j, i in enumerate(range(0, len(res), 9)):
             p1 = res[i]  # 0-512, 0-512
@@ -147,53 +154,95 @@ def upload(request):
             p9 = res[i + 8]  # 988-1500, 988-1500
             merged_res[j, 988:1500, 988:1500, :] = p9
 
-        # # calc cars
-        # cars_count = pd.DataFrame()
-        # for index, photo in enumerate(merged_res):
-        #
-        #     mtx = photo[:, :, 2]
-        #     res = np.zeros((mtx.shape[0], mtx.shape[1]))
-        #
-        #     res_count = 0
-        #     for i in range(0, mtx.shape[0]):
-        #         for j in range(0, mtx.shape[1]):
-        #             if mtx[i, j] == 1:
-        #
-        #                 if (i > 0 and mtx[i - 1, j] == 1):
-        #                     res[i, j] = res[i - 1, j]
-        #                     if res[i, j] == 0:
-        #                         res_count += 1
-        #                         res[i, j] = res_count
-        #
-        #                 elif (j > 0 and mtx[i, j - 1] == 1):
-        #                     res[i, j] = res[i, j - 1]
-        #                     if res[i, j] == 0:
-        #                         res_count += 1
-        #                         res[i, j] = res_count
-        #
-        #                 elif i < 1499 and mtx[i + 1, j] == 1:
-        #                     res[i, j] = res[i + 1, j]
-        #                     if res[i, j] == 0:
-        #                         res_count += 1
-        #                         res[i, j] = res_count
-        #
-        #                 elif j < 1499 and mtx[i, j + 1] == 1:
-        #                     res[i, j] = res[i, j + 1]
-        #                     if res[i, j] == 0:
-        #                         res_count += 1
-        #                         res[i, j] = res_count
-        #
-        #                 else:
-        #                     res_count += 1
-        #                     res[i, j] = res_count
-        #
-        #     cars_count.loc[index, 'id'] = names[index]
-        #     cars_count.loc[index, 'car_count'] = res_count
+        # calc cars
+        if 'cars' in objects:
+            for index, photo in enumerate(merged_res):
+                mtx = photo[:, :, 2]
+                res = np.zeros((mtx.shape[0], mtx.shape[1]))
 
-        # save results
+                res_count = 0
+                for i in range(0, mtx.shape[0]):
+                    for j in range(0, mtx.shape[1]):
+                        if mtx[i, j] == 1:
+
+                            if (i > 0 and mtx[i - 1, j] == 1):
+                                res[i, j] = res[i - 1, j]
+                                if res[i, j] == 0:
+                                    res_count += 1
+                                    res[i, j] = res_count
+
+                            elif (j > 0 and mtx[i, j - 1] == 1):
+                                res[i, j] = res[i, j - 1]
+                                if res[i, j] == 0:
+                                    res_count += 1
+                                    res[i, j] = res_count
+
+                            elif i < 1499 and mtx[i + 1, j] == 1:
+                                res[i, j] = res[i + 1, j]
+                                if res[i, j] == 0:
+                                    res_count += 1
+                                    res[i, j] = res_count
+
+                            elif j < 1499 and mtx[i, j + 1] == 1:
+                                res[i, j] = res[i, j + 1]
+                                if res[i, j] == 0:
+                                    res_count += 1
+                                    res[i, j] = res_count
+
+                            else:
+                                res_count += 1
+                                res[i, j] = res_count
+
+                data.update({'cars_count': res_count})
+        else:
+            data.update({'cars_count': "-"})
+
+        # calc houses
+        if 'buildings' in objects:
+            for index, photo in enumerate(merged_res):
+
+                mtx = photo[:, :, 1]
+                res = np.zeros((mtx.shape[0], mtx.shape[1]))
+
+                res_count = 0
+                for i in range(0, mtx.shape[0]):
+                    for j in range(0, mtx.shape[1]):
+                        if mtx[i, j] == 1:
+
+                            if (i > 0 and mtx[i - 1, j] == 1):
+                                res[i, j] = res[i - 1, j]
+                                if res[i, j] == 0:
+                                    res_count += 1
+                                    res[i, j] = res_count
+
+                            elif (j > 0 and mtx[i, j - 1] == 1):
+                                res[i, j] = res[i, j - 1]
+                                if res[i, j] == 0:
+                                    res_count += 1
+                                    res[i, j] = res_count
+
+                            elif i < 1499 and mtx[i + 1, j] == 1:
+                                res[i, j] = res[i + 1, j]
+                                if res[i, j] == 0:
+                                    res_count += 1
+                                    res[i, j] = res_count
+
+                            elif j < 1499 and mtx[i, j + 1] == 1:
+                                res[i, j] = res[i, j + 1]
+                                if res[i, j] == 0:
+                                    res_count += 1
+                                    res[i, j] = res_count
+
+                            else:
+                                res_count += 1
+                                res[i, j] = res_count
+
+                data.update({'houses_count': int(res_count / 65)})
+        else:
+            data.update({'houses_count': "-"})
 
         array_to_img(merged_res[0]).save(
-            os.path.join(BASE_DIR, 'satellite_image_recognition/media/temp_image_pred.png'))
+            os.path.join(BASE_DIR, 'satellite_image_recognition/media/temp_image_pred_%s.png' % max_image))
 
     except Exception as e:
         print(e)
@@ -202,8 +251,19 @@ def upload(request):
 
 
 def results(request):
+    data = {}
+    files = os.listdir(os.path.join(BASE_DIR, "satellite_image_recognition/media/"))
+    max_image = '0'
+    for file in files:
+        if '.png' in file:
+            max_image_temp = file.split('.')[0].split('_')[-1]
+            if int(max_image_temp) > int(max_image):
+                max_image = max_image_temp
+    data.update({'temp_image': "../media/temp_image_%s.png" % max_image})
+    data.update({'temp_image_pred': "../media/temp_image_pred_%s.png" % max_image})
+
     if request.GET.get('export'):
-        image = Image.open(os.path.join(BASE_DIR, 'satellite_image_recognition/media/temp_image_pred.png'))
+        image = Image.open(os.path.join(BASE_DIR, 'satellite_image_recognition/media/_%s.png' % max_image))
         format = image.format
         extension = str(format)
         response = HttpResponse(content_type='image/' + extension.lower())
@@ -212,7 +272,10 @@ def results(request):
 
         return response
 
-    return render(request, 'results.html')
+    data.update({'cars_count': "-"})
+    data.update({'houses_count': "-"})
+
+    return render(request, 'results.html', data)
 
 
 def map(request):
@@ -300,15 +363,15 @@ def map(request):
     #
     #     return response
 
-        # response = HttpResponse(content_type='text/csv')
-        # response['Content-Disposition'] = 'attachment; filename="wkt_result.csv"'
-        #
-        # writer = csv.writer(response)
-        # writer.writerow(df.columns.values)
-        # for i, row in df.iterrows():
-        #     writer.writerow(row.values)
-        #
-        # return response
+    # response = HttpResponse(content_type='text/csv')
+    # response['Content-Disposition'] = 'attachment; filename="wkt_result.csv"'
+    #
+    # writer = csv.writer(response)
+    # writer.writerow(df.columns.values)
+    # for i, row in df.iterrows():
+    #     writer.writerow(row.values)
+    #
+    # return response
 
     # print(wkt.ImageId.unique())
     # polygons = wkt.MultipolygonWKT.values

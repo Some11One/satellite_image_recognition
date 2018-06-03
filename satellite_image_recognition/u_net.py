@@ -4,6 +4,7 @@ from keras.layers import merge, MaxPooling2D, UpSampling2D, Convolution2D, Batch
 from keras.layers.core import Lambda
 from keras.models import *
 from keras.optimizers import *
+from keras import backend as K
 
 import os
 from .settings import BASE_DIR
@@ -198,7 +199,6 @@ class myUnet(object):
         return model
 
     def predict(self, imgs_test):
-
         model = self.get_unet()
         if self.type == 'buildings':
             model.load_weights(os.path.join(BASE_DIR, 'satellite_image_recognition/model_weights/unet_b.hdf5'))
@@ -208,4 +208,5 @@ class myUnet(object):
                       metrics=['binary_crossentropy', jaccard_coef_int])
 
         imgs_mask_test = model.predict(imgs_test, batch_size=8, verbose=1)
+        K.clear_session()
         return imgs_mask_test
