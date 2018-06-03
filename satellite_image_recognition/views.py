@@ -1,8 +1,8 @@
-import ast
 import io
 import json
 import os
 import pickle
+import zipfile
 
 import geojson
 import geopandas as gpd
@@ -14,7 +14,6 @@ from django.shortcuts import render
 from geojson import Feature, FeatureCollection
 from geopandas_osm import osm
 from keras.preprocessing.image import img_to_array, array_to_img
-from plotly.figure_factory._county_choropleth import shapely
 from shapely.geometry import shape
 
 from . import u_net
@@ -24,6 +23,39 @@ from .settings import BASE_DIR
 def load_obj(name):
     with open(name + '.pkl', 'rb') as f:
         return pickle.load(f)
+
+
+def getfiles(request, filenames):
+    zip_subdir = "result"
+    zip_filename = "%s.zip" % zip_subdir
+
+    # Open StringIO to grab in-memory ZIP contents
+    s = io.BytesIO()
+
+    # The zip compressor
+    zf = zipfile.ZipFile(s, "w")
+
+    for fpath in filenames:
+        try:
+            # Calculate path for file in zip
+            fdir, fname = os.path.split(fpath)
+            zip_path = os.path.join(zip_subdir, fname)
+
+            # Add file, at correct path
+            zf.write(fpath, zip_path)
+
+        except Exception as e:
+            print(e)  # is ok for waterway prediction if none exists
+
+    # Must close zip for all contents to be written
+    zf.close()
+
+    # Grab ZIP file from in-memory, make response with correct MIME-type
+    resp = HttpResponse(s.getvalue(), content_type="application/x-zip-compressed")
+    # ..and correct content-disposition
+    resp['Content-Disposition'] = 'attachment; filename=%s' % zip_filename
+
+    return resp
 
 
 d = load_obj(os.path.join(BASE_DIR, 'data/tile_dict'))
@@ -263,7 +295,8 @@ def results(request):
     data.update({'temp_image_pred': "../media/temp_image_pred_%s.png" % max_image})
 
     if request.GET.get('export'):
-        image = Image.open(os.path.join(BASE_DIR, 'satellite_image_recognition/media/temp_image_pred_%s.png' % max_image))
+        image = Image.open(
+            os.path.join(BASE_DIR, 'satellite_image_recognition/media/temp_image_pred_%s.png' % max_image))
         format = image.format
         extension = str(format)
         response = HttpResponse(content_type='image/' + extension.lower())
@@ -279,12 +312,7 @@ def results(request):
 
 
 def map(request):
-    # wkt = pd.read_csv(os.path.join(BASE_DIR, 'wkt_data/train_wkt_v4.csv'), sep=',')  # , engine='python')
-    # wkt = wkt[wkt.ImageId.str.contains('6120')]
-    # wkt.ClassType = wkt.ClassType.astype('int')
-    # wkt = wkt[wkt.ClassType.isin([3])]
-
-    latlng = request.GET.get('latlng', 'LatLng(54.9590034, 37.398563)').strip('LatLng(').strip(')')
+    latlng = request.GET.get('latlng', 'LatLng(55.751244, 37.618423)').strip('LatLng(').strip(')')
     base_lat = float(latlng.split(', ')[1])
     base_lon = float(latlng.split(', ')[0])
     r_lat = 0.01
@@ -306,15 +334,22 @@ def map(request):
     col = gpd.GeoDataFrame.from_features(collection['features'])
 
     try:
-        df = osm.query_osm('way', col.ix[0].geometry, recurse='down', tags='highway')
-        wkt = [ast.literal_eval(geojson.dumps(shapely.geometry.mapping(x))) for x in df.geometry.values]
-        wkt = [i for i in wkt if i.get('type') != 'Point']
+        df_highway = osm.query_osm('way', col.ix[0].geometry, recurse='down', tags='highway')
+        df_highway = df_highway[['geometry']]
+        df_highway['tag'] = 'highway'
+        df_building = osm.query_osm('way', col.ix[0].geometry, recurse='down', tags='building')
+        df_building = df_building[['geometry']]
+        df_building['tag'] = 'building'
+        df_waterway = osm.query_osm('way', col.ix[0].geometry, recurse='down', tags='waterway')
+        df_waterway = df_waterway[['geometry']]
+        df_waterway['tag'] = 'waterway'
+        df_highway.append(df_building).append(df_waterway).to_csv(os.path.join(BASE_DIR, 'polygons.csv'), index=False)
 
+        wkt = []
         test = [base_lon, base_lat]
 
         res = ()
         for item in d.items():
-
             k = item[0]
             v = item[1]
             tile_lat_min, tile_long_min, tile_lat_max, tile_long_max = v
@@ -325,87 +360,22 @@ def map(request):
         if len(res) > 0:
             x, y, z = res[0].split('_')
 
-            image = Image.open(
-                os.path.join(BASE_DIR, 'satellite_image_recognition/media/combined_37_UDB/%s/%s/%s.png' % (z, x, y)))
-            format = image.format
-            extension = str(format)
-            response = HttpResponse(content_type='image/' + extension.lower())
-            response['Content-Disposition'] = 'attachment; filename=%s' % 'prediction.png'
-            image.save(response, format)
+            return getfiles(request, [
+                os.path.join(BASE_DIR, 'satellite_image_recognition/media/combined_37_UDB/%s/%s/%s.png' % (z, x, y)),
+                os.path.join(BASE_DIR,
+                             'satellite_image_recognition/media/combined_37_UDB/%s/%s/%s_pred_highway.png' % (z, x, y)),
+                os.path.join(BASE_DIR,
+                             'satellite_image_recognition/media/combined_37_UDB/%s/%s/%s_pred_waterway.png' % (
+                             z, x, y)),
+                os.path.join(BASE_DIR,
+                             'satellite_image_recognition/media/combined_37_UDB/%s/%s/%s_pred_building.png' % (
+                             z, x, y)),
+                os.path.join(BASE_DIR, 'polygons.csv')])
 
-            return response
 
-    except Exception:
+    except Exception as e:
+        print(e)
         wkt = []
-
-    # if request.GET.get('export'):
-    #
-    #     test = [base_lon, base_lat]
-    #
-    #     res = ()
-    #     for item in d.items():
-    #
-    #         k = item[0]
-    #         v = item[1]
-    #         tile_lat_min, tile_long_min, tile_lat_max, tile_long_max = v
-    #
-    #         if tile_lat_min <= test[0] <= tile_lat_max and tile_long_min <= test[1] <= tile_long_max:
-    #             res = (k, v)
-    #
-    #     x, y, z = res[0].split('_')
-    #
-    #     image = Image.open(os.path.join(BASE_DIR, 'satellite_image_recognition/media/combined_37_UDB/%s/%s/%s.png' % (z, x, y)))
-    #     format = image.format
-    #     extension = str(format)
-    #     response = HttpResponse(content_type='image/' + extension.lower())
-    #     response['Content-Disposition'] = 'attachment; filename=%s' % 'prediction.png'
-    #     image.save(response, format)
-    #
-    #     return response
-
-    # response = HttpResponse(content_type='text/csv')
-    # response['Content-Disposition'] = 'attachment; filename="wkt_result.csv"'
-    #
-    # writer = csv.writer(response)
-    # writer.writerow(df.columns.values)
-    # for i, row in df.iterrows():
-    #     writer.writerow(row.values)
-    #
-    # return response
-
-    # print(wkt.ImageId.unique())
-    # polygons = wkt.MultipolygonWKT.values
-    # polygons_res = []
-    # for p in polygons:
-    #     if 'MULTIPOLYGON' == p.split(' ')[0]:
-    #         if 'EMPTY' == p.split(' ')[1]:
-    #             continue
-    #
-    #         g = loads(p)
-    #         g = affinity.rotate(g, 90)
-    #         p = g.wkt
-    #
-    #         # v = ast.literal_eval(p.strip('MULTIPOLYGON ').strip(' ').replace('(', '[').replace(')', ']'))
-    #         v_polygons = p.strip('MULTIPOLYGON (((').strip(')))').split(', ((')
-    #         max_lat = 0
-    #         for v_polygon in v_polygons:
-    #             v = v_polygon.strip('(').strip(')')
-    #             for v_i in v.split(', '):
-    #                 lat = float(v_i.split(' ')[0].strip('(').strip(')'))
-    #                 if lat > max_lat:
-    #                     max_lat = lat
-    #
-    #         for v_polygon in v_polygons:
-    #             v = v_polygon.strip('(').strip(')')
-    #             pol = []
-    #             for v_i in v.split(', '):
-    #                 lat = max_lat - float(v_i.split(' ')[0].strip('(').strip(')')) + base_lat
-    #                 long = float(v_i.split(' ')[1].strip('(').strip(')')) + base_lon
-    #                 pol.append([lat, long])
-    #             polygons_res.append(pol)
-    #
-    #     break
-    # polygons_res = [[]]
 
     return render(request, 'map.html', {'base_lat': base_lon, 'base_lon': base_lat,
                                         'boundary': o, 'geometry': wkt})
